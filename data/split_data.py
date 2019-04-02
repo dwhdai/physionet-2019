@@ -38,6 +38,7 @@ for train_file in train_files:
 
 groups = np.array(subject_ids)
 merged_data_df = pd.concat(data_file_dfs)
+merged_data_df["subject"] = groups
 k_folds = model_selection.GroupKFold(n_splits=k)
 split_num = 0
 
