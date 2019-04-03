@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 
 from sklearn import preprocessing, feature_selection, linear_model, model_selection, metrics, ensemble
-from cross_validation_experiment import preprocess_data
+from utils import *
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--train_file")
