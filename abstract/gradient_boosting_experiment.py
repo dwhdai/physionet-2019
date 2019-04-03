@@ -14,8 +14,8 @@ TRAIN_DATA = pd.read_csv(os.path.abspath(args.train_file))
 TEST_DATA = pd.read_csv(os.path.abspath(args.test_file))
 
 preprocessed_train_data, preprocessed_test_data = preprocess_data(TRAIN_DATA, TEST_DATA)
-X_train = preprocessed_train_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + UNIT_COLUMNS].values
-X_test = preprocessed_test_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + UNIT_COLUMNS].values
+X_train = preprocessed_train_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + HOSPITAL_COLUMNS].values
+X_test = preprocessed_test_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + HOSPITAL_COLUMNS].values
 y_train = preprocessed_train_data[LABEL_COLUMN].values
 y_test = preprocessed_test_data[LABEL_COLUMN].values
 
