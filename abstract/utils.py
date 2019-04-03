@@ -36,7 +36,7 @@ def preprocess_data(train_df, test_df):
     train_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = train_df_normalized
 
     # Fill remaining values with -1 (early labs/vitals that have not yet been measured)
-    train_df_preprocessed[DEMOGRAPHIC_COLUMNS] = train_df_preprocessed[DEMOGRAPHIC_COLUMNS].fillna(-1)
+    train_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = train_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].fillna(-1)
 
     # Repeat on test
     test_gr_by_subject = test_df.groupby(ID_COLUMN)
@@ -46,6 +46,6 @@ def preprocess_data(train_df, test_df):
     test_df_normalized = min_max_scaler.transform(test_df_imputed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS])
     test_df_preprocessed = test_df_imputed
     test_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = test_df_normalized
-    test_df_preprocessed[DEMOGRAPHIC_COLUMNS] = test_df_preprocessed[DEMOGRAPHIC_COLUMNS].fillna(-1)
+    test_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = test_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].fillna(-1)
 
     return train_df_preprocessed, test_df_preprocessed
