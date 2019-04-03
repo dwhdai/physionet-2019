@@ -10,8 +10,8 @@ LAB_COLUMNS = ['BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN'
        'Glucose', 'Lactate', 'Magnesium', 'Phosphate', 'Potassium',
        'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC',
        'Fibrinogen', 'Platelets']
-DEMOGRAPHIC_COLUMNS = ['Age', 'Gender', 'Unit1', 'Unit2',
-       'HospAdmTime', 'ICULOS']
+DEMOGRAPHIC_COLUMNS = ['Age', 'Gender', 'HospAdmTime', 'ICULOS']
+UNIT_COLUMNS = ['Unit1', 'Unit2']
 
 def preprocess_data(train_df, test_df):
 
@@ -24,6 +24,9 @@ def preprocess_data(train_df, test_df):
     for feature in VITALS_COLUMNS + LAB_COLUMNS + ["Age"]:
         avg_values[feature] = train_df_ffill[feature].mean()
     train_df_imputed = train_df_ffill.fillna(avg_values)
+
+    # Impute unit with 0s
+    train_df_imputed[UNIT_COLUMNS] = train_df_imputed[UNIT_COLUMNS].fillna(0)
 
     # Scale between 0 and 1
     min_max_scaler = preprocessing.MinMaxScaler()
@@ -39,6 +42,7 @@ def preprocess_data(train_df, test_df):
     test_gr_by_subject = test_df.groupby(ID_COLUMN)
     test_df_ffill = test_gr_by_subject.ffill()
     test_df_imputed = test_df_ffill.fillna(avg_values)
+    test_df_imputed[UNIT_COLUMNS] = test_df_imputed[UNIT_COLUMNS].fillna(0)
     test_df_normalized = min_max_scaler.transform(test_df_imputed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS])
     test_df_preprocessed = test_df_imputed
     test_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = test_df_normalized

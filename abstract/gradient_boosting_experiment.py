@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import argparse
-
+import os
 from sklearn import preprocessing, feature_selection, linear_model, model_selection, metrics, ensemble
 from utils import *
 
@@ -12,20 +12,10 @@ args = argparser.parse_args()
 
 TRAIN_DATA = pd.read_csv(os.path.abspath(args.train_file))
 TEST_DATA = pd.read_csv(os.path.abspath(args.test_file))
-ID_COLUMN = "subject"
-LABEL_COLUMN = "SepsisLabel"
-VITALS_COLUMNS = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2']
-LAB_COLUMNS = ['BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN',
-       'Alkalinephos', 'Calcium', 'Chloride', 'Creatinine', 'Bilirubin_direct',
-       'Glucose', 'Lactate', 'Magnesium', 'Phosphate', 'Potassium',
-       'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC',
-       'Fibrinogen', 'Platelets']
-DEMOGRAPHIC_COLUMNS = ['Age', 'Gender', 'Unit1', 'Unit2',
-       'HospAdmTime', 'ICULOS']
 
 preprocessed_train_data, preprocessed_test_data = preprocess_data(TRAIN_DATA, TEST_DATA)
-X_train = preprocessed_train_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].values
-X_test = preprocessed_test_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].values
+X_train = preprocessed_train_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + UNIT_COLUMNS].values
+X_test = preprocessed_test_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS + UNIT_COLUMNS].values
 y_train = preprocessed_train_data[LABEL_COLUMN].values
 y_test = preprocessed_test_data[LABEL_COLUMN].values
 
