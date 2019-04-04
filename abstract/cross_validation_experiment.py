@@ -22,22 +22,14 @@ for i in range(10):
 
     preprocessed_train_data, preprocessed_test_data = preprocess_data(train_data, test_data)
 
-    # X = data_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].values
-    # y = data_preprocessed[LABEL_COLUMN].values
-
     X_train = preprocessed_train_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].values
     X_test = preprocessed_test_data[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].values
     y_train = preprocessed_train_data[LABEL_COLUMN].values
     y_test = preprocessed_test_data[LABEL_COLUMN].values
     
-    feature_select = feature_selection.SelectKBest(k=20)
-    feature_select.fit(X_train, y_train)
-    X_train_top_features = feature_select.transform(X_train)
-    X_test_top_features = feature_select.transform(X_test)
-
-    model = ensemble.RandomForestClassifier(n_estimators=150)
-    model.fit(X_train_top_features, y_train)
-    predictions = model.predict(X_test_top_features)
+    model = ensemble.GradientBoostingClassifier(subsample=1.0, n_estimators=50, max_features="log2", max_depth=5, loss="exponential")
+    model.fit(X_train, y_train)
+    predictions = model.predict(X_test)
     print(metrics.classification_report(y_test, predictions))
     if model.classes_[0] == 0:
         prediction_probabilities = model.predict_proba(X_test_top_features)[:, 1]
