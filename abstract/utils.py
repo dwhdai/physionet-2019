@@ -39,6 +39,9 @@ def preprocess_data(train_df, test_df):
     train_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS] = train_df_preprocessed[VITALS_COLUMNS + LAB_COLUMNS + DEMOGRAPHIC_COLUMNS].fillna(-1)
 
     # Repeat on test
+
+    if test_df == None:
+        return train_df_preprocessed, None
     test_gr_by_subject = test_df.groupby(ID_COLUMN)
     test_df_ffill = test_gr_by_subject.ffill()
     test_df_imputed = test_df_ffill.fillna(avg_values)

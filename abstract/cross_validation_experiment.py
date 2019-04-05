@@ -4,6 +4,7 @@ import numpy as np
 import os
 import argparse
 from shutil import make_archive, rmtree
+from utils import *
 
 # DATA = pd.read_csv("../septrain.csv", sep="\t")
 
@@ -14,7 +15,7 @@ args = argparser.parse_args()
 data_dir = os.path.abspath(args.data_dir)
 
 for i in range(10):
-    train_file = os.path.joinh(data_dir, "split_%d/train_split_%d.csv" % (i, i))
+    train_file = os.path.join(data_dir, "split_%d/train_split_%d.csv" % (i, i))
     test_file = os.path.join(data_dir, "split_%d/test_split_%d.csv" % (i, i))
 
     train_data = pd.read_csv(train_file)
@@ -32,9 +33,9 @@ for i in range(10):
     predictions = model.predict(X_test)
     print(metrics.classification_report(y_test, predictions))
     if model.classes_[0] == 0:
-        prediction_probabilities = model.predict_proba(X_test_top_features)[:, 1]
+        prediction_probabilities = model.predict_proba(X_test)[:, 1]
     else:
-        prediction_probabilities = model.predict_proba(X_test_top_features)[:, 0]
+        prediction_probabilities = model.predict_proba(X_test)[:, 0]
 
     test_groups = test_data[ID_COLUMN]
     output_predictions_dir = "predictions_split_%d" % i
