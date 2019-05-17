@@ -17,7 +17,7 @@ library(rmdformats)
 
 ## Global options
 opts_chunk$set(echo=FALSE,
-               cache=TRUE,
+               cache=F,
                prompt=FALSE,
                tidy=TRUE,
                comment=NA,
@@ -42,7 +42,7 @@ conflict_prefer("filter", "dplyr")
 
 ```
 
-```{r}
+```{r cache = T}
 # Work with 1 split for now
 
 train <- read_csv("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_0/train_split_0.csv")
@@ -69,9 +69,13 @@ From the raw summary, a few things are interesting:
 3. Most values are very sparse, with lots of missing data
 4. Extremely skewed distributions for various measurements, eg FiO2, AST
 5. Gender, Unit1, and Unit2 are categorical variables. Additionally, Unit1 and Unit2 should be mutually exclusive.
+    + One of these variables may be sufficient to capture all the information
 6. HospAdmTime looks weird
 7. Sepsis label is rare, occurring in 2% of records.
-
+8. FiO2 is a percentage; values should fall within 0 to 1.
+9. Three variables have negative values: BaseExcess, FiO2, and HospAdmTime. FiO2 should not have negative values; BaseExcess could have negative values; HospAdmTime is the difference in Hospital Admission Time and ICU Admission Time, so a negative value would mean they were admitted to the hospital prior to the ICU.
+10. For patients 90 or older, their age was replaced with 100.
+11. Each row of data is at an 1-hourly interval.
 
 ## Data Pre-processing
 
@@ -110,6 +114,28 @@ ggplot(data = cormat_melted, aes(x=Var1, y=Var2, fill = value)) +
                          name = "Spearman Correlation") +
     theme_minimal() + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+## Distribution of numeric variables
+
+A 1% random sample of the data points are plotted below.
+
+```{r}
+data %>% 
+    sample_frac(0.01) %>% 
+    select_if(is.numeric) %>% 
+    mutate_all(.f = function(x) ifelse(x==0, 0.001, x)) %>% 
+    gather(key = key, value = value) %>% 
+    ggplot(aes(y = value, x = key)) + 
+    geom_jitter(size = 0.1, alpha = 0.05) +
+    coord_flip() +
+    # scale_y_continuous(trans = "log10",
+    #                    breaks = scales::trans_breaks("log10", function(x)10^x),
+    #                    labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+    geom_hline(yintercept = 1, lty = "dashed", col = "red") +
+    theme_bw()
+
 ```
 
 
