@@ -1,0 +1,104 @@
+---
+title: ""
+author: "David Dai"
+date: "Last updated: `r format(Sys.Date(), '%b %d, %Y')`"
+output:
+  rmdformats::html_clean:
+    highlight: kate
+---
+
+
+```{r knitr_init, echo=FALSE, cache=FALSE, include = F}
+library(knitr)
+library(rmdformats)
+
+## Global options
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               cache.lazy = F)
+opts_knit$set(width=80)
+
+```
+
+```{r, cache = F}
+library(tidyverse)
+library(CHART)
+library(here)
+library(conflicted)
+library(lubridate)
+library(mlr)
+
+# Conflicts
+conflict_prefer("here", "here")
+conflict_prefer("filter", "dplyr")
+
+
+```
+
+```{r eval = F}
+# Read in all splits
+test_files <- list.files(paste0("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_",
+                 0:9),
+           full.names = T) %>%  
+    magrittr::extract(str_detect(., "test_split"))
+
+train_files <- list.files(paste0("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_",
+                 0:9),
+           full.names = T) %>%  
+    magrittr::extract(str_detect(., "train_split"))
+
+
+
+test <- map(test_files, read_csv)
+train <- map(train_files, read_csv)
+
+test_subs <- unlist(test %>% map(.f = function(x)select(x, "subject"))) %>% 
+    unique()
+
+train_subs <- unlist(train %>% map(.f = function(x)select(x, "subject"))) %>% 
+    unique()
+
+
+```
+
+```{r}
+# Work with 1 split for now
+
+train <- read_csv("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_0/train_split_0.csv")
+
+test <- read_csv("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_0/test_split_0.csv")
+
+data <- list(train, test)
+```
+
+# Data Pre-processing
+
+```{r}
+data <- data %>% 
+    map(.f = function(x) x %>% 
+            mutate(Gender = as.factor(Gender),
+                   Unit1 = as.factor(Unit1),
+                   Unit2 = as.factor(Unit2),
+                   SepsisLabel = as.factor(SepsisLabel)) %>% 
+            mutate_if(is.logical, as.numeric))
+
+
+class_task <- makeClassifTask(id = "classification",
+                              data = data[[1]] %>% select(-subject), 
+                              target = "SepsisLabel",
+                              positive = "1",
+                            )
+
+logreg_learner <- makeLearner("classif.logreg", 
+                              id = "logreg",
+                              predict.type = "prob",
+                              fix.factors.prediction = T)
+
+fit <- train(logreg_learner, class_task)
+```
+

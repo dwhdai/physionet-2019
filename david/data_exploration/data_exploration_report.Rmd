@@ -1,0 +1,165 @@
+---
+title: "Physionet Data Exploration"
+author: "David Dai"
+date: "Last updated: `r format(Sys.Date(), '%b %d, %Y')`"
+output:
+    html_document:
+        theme: paper
+        toc: true
+        toc_float: true
+        highlight: kate
+---
+
+
+```{r knitr_init, echo=FALSE, cache=FALSE, include = F}
+library(knitr)
+library(rmdformats)
+
+## Global options
+opts_chunk$set(echo=FALSE,
+               cache=F,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               cache.lazy = F)
+opts_knit$set(width=150)
+
+```
+
+```{r}
+library(tidyverse)
+library(CHART)
+library(here)
+library(conflicted)
+library(lubridate)
+library(mlr)
+
+# Conflicts
+conflict_prefer("here", "here")
+conflict_prefer("filter", "dplyr")
+
+```
+
+```{r cache = T}
+# Work with 1 split for now
+
+train <- read_csv("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_0/train_split_0.csv")
+
+test <- read_csv("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/splits/split_0/test_split_0.csv")
+
+data <- bind_rows(train, test)
+```
+
+# Summary of the dataset
+
+There are `r nrow(data)` records in the dataset, with `r n_distinct(data$subject)` unique subjects.
+
+## Raw data summary
+```{r}
+summarizeColumns(data) %>% 
+    kable(digits = 2)
+```
+
+From the raw summary, a few things are interesting:
+
+1. Numeric ranges are quite extreme in some cases, eg. temperature ranging from 20.9 to 50 
+2. No non-missing values of EtCO2
+3. Most values are very sparse, with lots of missing data
+4. Extremely skewed distributions for various measurements, eg FiO2, AST
+5. Gender, Unit1, and Unit2 are categorical variables. Additionally, Unit1 and Unit2 should be mutually exclusive.
+    + One of these variables may be sufficient to capture all the information
+6. HospAdmTime looks weird
+7. Sepsis label is rare, occurring in 2% of records.
+8. FiO2 is a percentage; values should fall within 0 to 1.
+9. Three variables have negative values: BaseExcess, FiO2, and HospAdmTime. FiO2 should not have negative values; BaseExcess could have negative values; HospAdmTime is the difference in Hospital Admission Time and ICU Admission Time, so a negative value would mean they were admitted to the hospital prior to the ICU.
+10. For patients 90 or older, their age was replaced with 100.
+11. Each row of data is at an 1-hourly interval.
+
+## Data Pre-processing
+
+Pre-processing steps:
+
+1. Convert gender to factor
+2. Convert Unit1, Unit2 to factor
+3. Convert SepsisLabel to factor
+4. Remove EtCO2 from dataset
+
+```{r}
+clean_data <- data %>% 
+    mutate(Gender = as.factor(Gender),
+           Unit1 = as.factor(Unit1),
+           Unit2 = as.factor(Unit2),
+           SepsisLabel = as.factor(SepsisLabel)) %>% 
+    select(-EtCO2)
+
+```
+
+## Correlations between numeric variables
+
+The figure below shows the Spearman correlations between all numeric variables, using all available pairwise observations. Note that due to high amount of missing data, these correlations may be biased. A deeper understanding of the missing data mechanism is required.
+
+```{r}
+cormat <- round(cor(clean_data %>% select_if(is.numeric), use = "pairwise.complete",
+                    method = "spearman"),2) 
+cormat[upper.tri(cormat)] <- NA
+
+cormat_melted <- reshape2::melt(cormat, na.rm = T)
+
+ggplot(data = cormat_melted, aes(x=Var1, y=Var2, fill = value)) + 
+    geom_tile(color = "white") +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+                         midpoint = 0, limit = c(-1,1),
+                         name = "Spearman Correlation") +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+## Distribution of numeric variables
+
+A 1% random sample of the data points are plotted below.
+
+```{r}
+data %>% 
+    sample_frac(0.01) %>% 
+    select_if(is.numeric) %>% 
+    mutate_all(.f = function(x) ifelse(x==0, 0.001, x)) %>% 
+    gather(key = key, value = value) %>% 
+    ggplot(aes(y = value, x = key)) + 
+    geom_jitter(size = 0.1, alpha = 0.05) +
+    coord_flip() +
+    # scale_y_continuous(trans = "log10",
+    #                    breaks = scales::trans_breaks("log10", function(x)10^x),
+    #                    labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+    geom_hline(yintercept = 1, lty = "dashed", col = "red") +
+    theme_bw()
+
+```
+
+
+
+```{r eval = F}
+data <- data %>% 
+    map(.f = function(x) x %>% 
+            mutate(Gender = as.factor(Gender),
+                   Unit1 = as.factor(Unit1),
+                   Unit2 = as.factor(Unit2),
+                   SepsisLabel = as.factor(SepsisLabel)) %>% 
+            mutate_if(is.logical, as.numeric))
+
+
+class_task <- makeClassifTask(id = "classification",
+                              data = data[[1]] %>% select(-subject), 
+                              target = "SepsisLabel",
+                              positive = "1",
+)
+
+logreg_learner <- makeLearner("classif.logreg", 
+                              id = "logreg",
+                              predict.type = "prob",
+                              fix.factors.prediction = T)
+
+fit <- train(logreg_learner, class_task)
+```
