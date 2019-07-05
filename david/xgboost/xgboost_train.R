@@ -53,28 +53,16 @@ debug_msg("Debug mode is ON")
 # Import data -------------------------------------------------------------
 
 train <- 
-    # readRDS("Z:/LKS-CHART/Projects/rushh_project/data/modeling_data/merged_data/gim_6hour_raw_train.rds")
-    readRDS(args$train) %>% 
-    # Remove the rows where the outcome has already happened, since we want the 
-    # prediction to happen before
-    filter(eval(parse(text = substr(args$outcome, 1, 10))) == 0)
-
-valid <- 
-    # readRDS("Z:/LKS-CHART/Projects/rushh_project/data/modeling_data/merged_data/surg_6hour_raw_valid.rds")  
-    readRDS(args$valid) %>% 
-    # Remove the rows where the outcome has already happened, since we want the 
-    # prediction to happen before
-    filter(eval(parse(text = substr(args$outcome, 1, 10))) == 0)
+    # read_csv(here("physionet_data", "small_dataset", "train.csv"))
+    read_csv(args$train) 
+  
+valid <-   
+  # read_csv(here("physionet_data", "small_dataset", "test.csv"))
+    read_csv(args$valid) 
 
 # Variables to include in model
 model_vars <- train %>% 
-    select(-encounter_num,
-           -contains("outcome"),
-           -contains("measured"),
-           contains("measured_last"),
-           matches("(history|baseline).*(measured)"),
-           -contains("baseline_glucose_derived")
-    ) %>% 
+    select(-one_of("subject", "SepsisLabel", "EtCO2", "Bilirubin_direct")) %>% 
     names()
 
 # Parse outcome
@@ -102,20 +90,25 @@ if (args$search == "yes"){
                           max_delta_step = parser(args$max_delta_step)) %>% 
         filter(max_depth == 4 & min_child_weight == 1 |
                    max_depth == 10 & min_child_weight == 10 |
-                   max_depth == 7)
+                   max_depth == 7) %>% 
+      slice(1:2)
     
     # Run grid search here
-    source(here("xgboost", "xgboost_search.R"))
+    source(here("david", "xgboost", "xgboost_search.R"))
     tictoc::tic()
     
-    results <- grid_search(train,
-                           valid,
-                           n_param_set = nrow(params),
-                           ncluster =  args$ncluster,
-                           params,
-                           train_outcome,
-                           valid_outcome,
-                           model_vars)
+    # Loop through all 10 splits
+    for (i in 1:1){
+      results <- grid_search(train,
+                             valid,
+                             n_param_set = nrow(params),
+                             ncluster =  args$ncluster,
+                             params,
+                             train_outcome,
+                             valid_outcome,
+                             model_vars,
+                             split = i)
+    }
     
     debug_msg("Grid search complete.")
     
