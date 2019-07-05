@@ -53,15 +53,28 @@ input_features <- list(rx = "A",
                              ecog.ps = "good")
 predict(cox_fit,
         input_features,
-        type = "response")
+        type = "expected")
 
+# Function to calculate the probability of event given input features and time
 risk <-  function(model, newdata, time) {
   as.numeric(1-summary(survfit(model, newdata = newdata, se.fit = F, conf.int = F), times = time)$surv)
 }
+
+summary(survfit(cox_fit,
+                newdata = list(rx = "A",
+                               resid.ds = "yes",
+                               age = 50,
+                               ecog.ps = "good")),
+        censored = T, times = 1000)
 
 risk(cox_fit, input_features, 1000)
 
 #https://stats.stackexchange.com/questions/36015/prediction-in-cox-regression
 
+```
+
+# Time-varying covariates
+```{r}
+cut_points <- unique(ovarian$futime[ovarian$fustat==1])
 ```
 
