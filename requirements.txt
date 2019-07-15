@@ -1,7 +1,5 @@
 certifi==2019.3.9
 joblib==0.13.2
-mkl-fft==1.0.10
-mkl-random==1.0.2
 numpy==1.16.2
 pandas==0.24.2
 python-dateutil==2.8.0
