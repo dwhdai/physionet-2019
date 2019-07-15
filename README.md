@@ -1,22 +1,34 @@
-# Example prediction code for Python for the PhysioNet/CinC Challenge 2019
+# Development of a Sepsis Early Warning Indicator
 
-## Contents
+## To run code:
 
-This prediction code uses two scripts:
+- Install Docker (will need admin permission): https://hub.docker.com/editions/community/docker-ce-desktop-windows
 
-* `get_sepsis_score.py` makes predictions on clinical time-series data.  Add your prediction code to the `get_sepsis_score` function.  To reduce your code's run time, add any code to the `load_sepsis_model` function that you only need to run once, such as loading weights for your model.
-* `driver.py` calls `load_sepsis_model` once and `get_sepsis_score` many times. It also performs all file input and output.  **Do not** edit this script -- or we will be unable to evaluate your submission.
+- Build docker image:
+```
+docker build -t physionet .
+```
 
-Check the code in these files for the input and output formats for the `load_sepsis_model` and `get_sepsis_score` functions.
+- Create test directories: 1) Copy some of the training data into the a test input directory and 2) create an empty output directory. This is what my test directories look like:
+```
+C:\Users\PouPromC\Projects\physionet-2019\test_data (abstract-submission -> origin)
+λ ls
+input_dir/  output_dir/
+C:\Users\PouPromC\Projects\physionet-2019\test_data (abstract-submission -> origin)
+λ ls input_dir\
+p000001.psv
+C:\Users\PouPromC\Projects\physionet-2019\test_data (abstract-submission -> origin)
+λ ls output_dir\
+```
 
-## Use
 
-You can run this prediction code by installing the NumPy package and running
+- Mount the test directories to the Docker countainer and launch the container.
 
-    python driver.py input_directory output_directory
+```
+docker run -it -v PATH_TO_INPUT_DIRECTORY\:/physionet2019/input_directory -v PATH_TO_OUTPUT_DIRECTORY:/physionet-2019/output_dir physionet bash
+```
 
-where `input_directory` is a directory for input data files and `output_directory` is a directory for output prediction files.  The PhysioNet/CinC 2019 webpage provides a training database with data files and a description of the contents and structure of these files.
-
-## Details
-
-See the PhysioNet/CinC 2019 webpage for more details, including instructions for the other files in this repository.
+- Run the `driver.py` code.
+```
+python driver.py input_directory output_dir
+```

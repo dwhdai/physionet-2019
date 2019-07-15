@@ -21,11 +21,15 @@ def load_sepsis_model():
 
 def get_sepsis_score(data, model):
 
-    threshold=0.2
-    avg_values_filename="avg_values.joblib"
-    min_max_scaler_filename="min_max_scaler.joblib"
+    threshold=0.2 # determined on 10-fold cv but this needs to be revisited tbh
+    avg_values_filename="avg_values.joblib"  # avg values from train data
+    min_max_scaler_filename="min_max_scaler.joblib"  # min/max values from train data
+
+    # mb we should trim rly high and rly low values???
 
     df = pd.DataFrame(data)
+    # Assuming that columns will always be in this order hmmmm
+    # the fct for loading data only returns numbers no column names so idk
     df.columns = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2', 'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN', 'Alkalinephos', 'Calcium', 'Chloride', 'Creatinine', 'Bilirubin_direct', 'Glucose', 'Lactate', 'Magnesium', 'Phosphate', 'Potassium', 'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC', 'Fibrinogen', 'Platelets', 'Age', 'Gender', 'Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 
     # Pre-process data
@@ -44,4 +48,7 @@ def get_sepsis_score(data, model):
     labels = (scores > threshold).astype(int)
     # print(scores)
     # print(labels)
+
+    # This is will only be called for one row at a time so driver.py
+    # only expects 1 score and 1 label hmmmmmmmm
     return scores[0], labels[0]
