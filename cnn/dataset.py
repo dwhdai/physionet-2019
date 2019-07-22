@@ -68,8 +68,12 @@ class PhysionetDataset(Dataset):
 
     # Returns 1 row of data
     def __getitem__(self, index):
+        patient_id = self.data.iloc[index]["id"]
+        iculos = self.data.iloc[index]["ICULOS"]
         return (self.data.iloc[index][FEATURES].values.astype(float),
-                self.data.iloc[index][LABEL].values.astype(int))
+                self.data.iloc[index][LABEL].values.astype(int),
+                patient_id,
+                iculos)
 
 
 # Inherit from PhysionetDataset --> use same preprocessing
@@ -101,6 +105,7 @@ class PhysionetDatasetCNN(PhysionetDataset):
     def __getitem__(self, index):
 
         patient_id = self.data.iloc[index]["id"]
+        iculos = self.data.iloc[index]["ICULOS"]
 
         if index < self.window:
             window_data = self.data.iloc[:index + 1]
@@ -118,4 +123,4 @@ class PhysionetDatasetCNN(PhysionetDataset):
             data[-len(clipped_window):, :] = clipped_window[FEATURES].values
 
         # data has shape (self.window, len(FEATURES))
-        return (data, outcome)
+        return (data, outcome, patient_id, iculos)
