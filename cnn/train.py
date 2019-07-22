@@ -2,25 +2,57 @@
 # @Author: Chloe
 # @Date:   2019-07-22 13:06:21
 # @Last Modified by:   Chloe
-# @Last Modified time: 2019-07-22 13:20:04
+# @Last Modified time: 2019-07-22 17:33:36
 
 import argparse
 import torch
 import pandas as pd
+import numpy as np
 from model import CNN
 from dataset import PhysionetDataset, PhysionetDatasetCNN, FEATURES
 from torch.utils.data import DataLoader
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import classification_report
 
-def train_model(model, loss_fn, optimizer, dataloader, num_epochs=100):
+from evaluate_sepsis_score import compute_prediction_utility, compute_auc, compute_accuracy_f_measure
+
+def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="", verbose=True):
+
+    if verbose:
+        log = "{} (train -- valid)\n".format(header)
+        log += "Loss: {} -- {} \n".format(train_loss, valid_loss)
+        log += "AUROC: {} -- {}\n".format(train_metrics["auroc"],
+                                          valid_metrics["auroc"])
+        log += "AUPRC: {} -- {}\n".format(train_metrics["auprc"],
+                                          valid_metrics["auprc"])
+        log += "Normalized utility : {} -- {}\n".format(train_metrics["normalized_observed_utility"],
+            valid_metrics["normalized_observed_utility"])
+        log += "Unnormalized utility : {} -- {}\n".format(train_metrics["unnormalized_observed_utility"],
+            valid_metrics["unnormalized_observed_utility"])
+        log += "Train classification report:\n"
+        log += classification_report(y_true=train_results.SepsisLabel, y_pred=train_results.Prediction)
+        log += "Valid classification report:\n"
+        log += classification_report(y_true=valid_results.SepsisLabel, y_pred=valid_results.Prediction)
+        log += "\n"
+    else:
+        log = "{} -- Train loss: {} -- Valid loss: {} -- ".format(header, train_loss, valid_loss)
+        log += "Train AUROC: {} -- Valid AUROC: {}".format(train_metrics["auroc"], valid_metrics["auroc"])
+    print(log)
+
+
+def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, num_epochs=100,
+                cuda=False):
 
     model.train()
     for epoch in range(num_epochs):
         loss_epoch = 0.0
-        for batch in dataloader:
+        for batch in train_dataloader:
             # Get data
             data = batch[0].float()
             target = batch[1]
+
+            if cuda:
+                data = data.cuda()
+                target = target.cuda()
 
             # Zero the parameter gradients
             optimizer.zero_grad()
@@ -31,38 +63,61 @@ def train_model(model, loss_fn, optimizer, dataloader, num_epochs=100):
             loss.backward()
             optimizer.step()
 
-            # Get total loss
-            loss_epoch += loss.item()
-        print("Epoch {} -- Loss: {}".format(epoch,
-                                            loss_epoch / dataloader.__len__()))
+        train_results, train_loss = evaluate_model(model, train_dataloader, loss_fn, cuda=cuda)
+        valid_results, valid_loss = evaluate_model(model, valid_dataloader, loss_fn, cuda=cuda)
+        train_metrics = compute_metrics(train_results)
+        valid_metrics = compute_metrics(valid_results)
+
+        print_results(train_metrics, valid_metrics, train_loss, valid_loss,
+            header="Epoch {}".format(epoch), verbose=False)
+
+
 
     return model
 
-def evaluate_model(model, dataloader):
+def evaluate_model(model, dataloader, loss_fn, threshold=0.5, cuda=False):
 
     model.eval()
     targets = []
-    predictions = []
+    probabilities = []
     patient_ids = []
     iculos_vals = []
+    total_loss = 0.0
+
     for batch in dataloader:
         data = batch[0].float()
-        target = list(batch[1][:, 0].numpy())
+        target = batch[1]
+
+        if cuda:
+            data = data.cuda()
+
+        prediction = model(data)
+
+        if cuda:
+            prediction = prediction.cpu()
+        loss = loss_fn(prediction, target.view(-1))
+
         patient_id = list(batch[2])
         iculos = list(batch[3].numpy())
-        prediction = list(torch.softmax(model(data), 1)[:, 1].detach().numpy())
-        targets += target
-        predictions += prediction
+        probability = list(torch.softmax(prediction, 1)[:, 1].detach().numpy())
+        targets += list(target[:, 0].numpy())
+        probabilities += probability
         patient_ids += patient_id
         iculos_vals += iculos
+
+        # Get total loss
+        total_loss += loss.item()
 
     results = pd.DataFrame({
         "id": patient_ids,
         "ICULOS": iculos_vals,
         "SepsisLabel": targets,
-        "PredictedProbability": predictions
+        "PredictedProbability": probabilities,
+        "Prediction": [1 if prob > threshold else 0 for prob in probabilities]
     })
-    return results.sort_values(["id", "ICULOS"])
+    return results.sort_values(["id", "ICULOS"]), total_loss / dataloader.__len__()
+
+
 def compute_metrics(results):
     auroc, auprc = compute_auc(labels=results.SepsisLabel,
                                predictions=results.PredictedProbability)
@@ -131,7 +186,10 @@ if __name__ == "__main__":
                            default="Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/")
     argparser.add_argument("--valid_dir",
                            default="Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/")
+    argparser.add_argument("--cuda", action="store_true")
     args = argparser.parse_args()
+
+    cuda = args.cuda and torch.cuda.is_available()
     window_size = 8
     num_features = len(FEATURES)
     batch_size = 5
@@ -150,16 +208,24 @@ if __name__ == "__main__":
                                   batch_size=batch_size, shuffle=False)
 
     model = CNN(input_height=window_size, input_width=num_features)
+    if cuda:
+        model = model.cuda()
 
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    model = train_model(model, loss_fn=criterion, optimizer=optimizer, dataloader=train_dataloader, num_epochs=num_epochs)
+    model = train_model(model, loss_fn=criterion,
+                        optimizer=optimizer,
+                        train_dataloader=train_dataloader,
+                        valid_dataloader=valid_dataloader,
+                        num_epochs=num_epochs,
+                        cuda=cuda)
 
-    train_results = evaluate_model(model, train_dataloader)
-    valid_results = evaluate_model(model, valid_dataloader)
-    print(roc_auc_score(y_score=train_results.PredictedProbability,
-                        y_true=train_results.SepsisLabel))
-    print(roc_auc_score(y_score=valid_results.PredictedProbability,
-                        y_true=valid_results.SepsisLabel))
-
+    # Evaluate model across diff thresholds
+    for thr in np.arange(0.1, 1.0, 0.1):
+        train_results, train_loss = evaluate_model(model, train_dataloader, criterion, threshold=thr, cuda=cuda)
+        valid_results, valid_loss = evaluate_model(model, valid_dataloader, criterion, threshold=thr, cuda=cuda)
+        train_metrics = compute_metrics(train_results)
+        valid_metrics = compute_metrics(valid_results)
+        print_results(train_metrics, valid_metrics, train_loss, valid_loss,
+                      header="Results for threshold {}".format(thr), verbose=True)
