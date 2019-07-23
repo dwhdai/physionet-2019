@@ -13,6 +13,14 @@ FEATURES = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
             'Age', 'Gender', 'Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 LABEL = ['SepsisLabel']
 
+# Labs and Vitals that needed indicators
+LABS_VITALS = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
+       'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN',
+       'Alkalinephos', 'Calcium', 'Chloride', 'Creatinine', 'Bilirubin_direct',
+       'Glucose', 'Lactate', 'Magnesium', 'Phosphate', 'Potassium',
+       'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC',
+       'Fibrinogen', 'Platelets']
+
 
 class PhysionetDataset(Dataset):
 
@@ -58,13 +66,15 @@ class PhysionetDataset(Dataset):
 
     # Simple preprocessing
     def __preprocess__(self):
-        # Forward-fill
-        preprocessed_data = self.data.groupby("id").ffill()
-        # Fill NAs with -1
-        # TODO: Fill with average? Create indicator variables? Create
-        # last_measured variables?
-        preprocessed_data = preprocessed_data.fillna(-1)
-        self.data = preprocessed_data
+        
+        
+        # Add indicator variables & fill with means for labs/vitals
+        for feature in LABS_VITALS:
+            # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
+            self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
+            # Fill NaNs in labs/vitals into averages for each patient
+            self.data[feature] = self.data.groupby('id')[feature].apply(lambda x: x.fillna(x.mean()))
+            self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
 
     # Returns 1 row of data
     def __getitem__(self, index):
@@ -124,3 +134,9 @@ class PhysionetDatasetCNN(PhysionetDataset):
 
         # data has shape (self.window, len(FEATURES))
         return (data, outcome, patient_id, iculos)
+
+
+# Test
+#train_dataset = PhysionetDatasetCNN("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/")
+#train_dataset.__preprocess__()
+#train_dataset.__setwindow__(8)
