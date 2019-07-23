@@ -1,8 +1,10 @@
 
 from torch.utils.data import Dataset
+from sklearn import preprocessing
 import pandas as pd
 import numpy as np
 import os
+
 
 FEATURES = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
             'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST',
@@ -68,13 +70,30 @@ class PhysionetDataset(Dataset):
     def __preprocess__(self):
         
         
+        # TODO: Include time since last measure
+        
+
+        # Forward fill
+        self.data = self.data.groupby("id").ffill()
+
         # Add indicator variables & fill with means for labs/vitals
         for feature in LABS_VITALS:
             # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
             self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
             # Fill NaNs in labs/vitals into averages for each patient
-            self.data[feature] = self.data.groupby('id')[feature].apply(lambda x: x.fillna(x.mean()))
+            self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
             self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
+        
+        # Fill the rest NaNs with -1
+        self.data = self.data.fillna(-1)
+
+        # Normalization for certain columns
+        selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
+        x = selected_normalize.values
+        min_max_scaler = preprocessing.MinMaxScaler()
+        x_scaled = min_max_scaler.fit_transform(x)
+        self.data[selected_normalize.columns.tolist()] = x_scaled
+        
 
     # Returns 1 row of data
     def __getitem__(self, index):

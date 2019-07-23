@@ -15,6 +15,54 @@ from sklearn.metrics import classification_report
 
 from evaluate_sepsis_score import compute_prediction_utility, compute_auc, compute_accuracy_f_measure
 
+class EarlyStopping(object):
+    def __init__(self, mode='min', min_delta=0, patience=10, percentage=False):
+        self.mode = mode
+        self.min_delta = min_delta
+        self.patience = patience
+        self.best = None
+        self.num_bad_epochs = 0
+        self.is_better = None
+        self._init_is_better(mode, min_delta, percentage)
+
+        if patience == 0:
+            self.is_better = lambda a, b: True
+            self.step = lambda a: False
+
+    def step(self, metrics):
+        if self.best is None:
+            self.best = metrics
+            return False
+
+        if np.isnan(metrics):
+            return True
+
+        if self.is_better(metrics, self.best):
+            self.num_bad_epochs = 0
+            self.best = metrics
+        else:
+            self.num_bad_epochs += 1
+
+        if self.num_bad_epochs >= self.patience:
+            return True
+
+        return False
+
+    def _init_is_better(self, mode, min_delta, percentage):
+        if mode not in {'min', 'max'}:
+            raise ValueError('mode ' + mode + ' is unknown!')
+        if not percentage:
+            if mode == 'min':
+                self.is_better = lambda a, best: a < best - min_delta
+            if mode == 'max':
+                self.is_better = lambda a, best: a > best + min_delta
+        else:
+            if mode == 'min':
+                self.is_better = lambda a, best: a < best - (best * min_delta / 100)
+            if mode == 'max':
+                self.is_better = lambda a, best: a > best + (best * min_delta / 100)
+
+
 def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="", verbose=True):
 
     if verbose:
@@ -43,6 +91,9 @@ def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, n
                 cuda=False):
 
     model.train()
+    # Early Stopping
+    # TODO: Need to put them into hyperparameters
+    es = EarlyStopping(patience=5, min_delta=1e-10)
     for epoch in range(num_epochs):
         loss_epoch = 0.0
         for batch in train_dataloader:
@@ -67,6 +118,12 @@ def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, n
         valid_results, valid_loss = evaluate_model(model, valid_dataloader, loss_fn, cuda=cuda)
         train_metrics = compute_metrics(train_results)
         valid_metrics = compute_metrics(valid_results)
+        
+        # Early Stopping
+        if es.step(valid_loss):
+            print("Early stopping at epoch: ", epoch)
+            print("Validation loss: ", valid_loss)
+            break
 
         print_results(train_metrics, valid_metrics, train_loss, valid_loss,
             header="Epoch {}".format(epoch), verbose=False)
@@ -194,7 +251,7 @@ if __name__ == "__main__":
     num_features = len(FEATURES)
     batch_size = 5
     num_epochs = 10
-
+    # num_epochs = 1000 # Test for early stopping
     train_dataset = PhysionetDatasetCNN(args.train_dir)
     train_dataset.__preprocess__()
     train_dataset.__setwindow__(window_size)
