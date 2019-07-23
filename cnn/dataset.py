@@ -136,7 +136,3 @@ class PhysionetDatasetCNN(PhysionetDataset):
         return (data, outcome, patient_id, iculos)
 
 
-# Test
-#train_dataset = PhysionetDatasetCNN("Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/")
-#train_dataset.__preprocess__()
-#train_dataset.__setwindow__(8)
