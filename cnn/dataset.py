@@ -66,34 +66,51 @@ class PhysionetDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    # Simple preprocessing
-    def __preprocess__(self):
-        
-        
+    def __preprocess__(self, method="measured"):
+
+        self.preprocessing_method = method
+
+
         # TODO: Include time since last measure
-        
+
 
         # Forward fill
         self.data = self.data.groupby("id").ffill()
 
-        # Add indicator variables & fill with means for labs/vitals
-        for feature in LABS_VITALS:
-            # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
-            self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
-            # Fill NaNs in labs/vitals into averages for each patient
-            self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
-            self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
-        
-        # Fill the rest NaNs with -1
-        self.data = self.data.fillna(-1)
+        if method == "measured":
+            """Measured preprocessing
+            - Forward fill
+            - Add indicator '_measured' variable
+            - Fill with patient-specific mean
+            - Fill with -1
+            - Normalize labs/vitals columns
+            """
 
-        # Normalization for certain columns
-        selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
-        x = selected_normalize.values
-        min_max_scaler = preprocessing.MinMaxScaler()
-        x_scaled = min_max_scaler.fit_transform(x)
-        self.data[selected_normalize.columns.tolist()] = x_scaled
-        
+            # Add indicator variables & fill with means for labs/vitals
+            for feature in LABS_VITALS:
+                # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
+                self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
+                # Fill NaNs in labs/vitals into averages for each patient
+                self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
+                self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
+
+            # Fill the rest NaNs with -1
+            self.data = self.data.fillna(-1)
+
+            # Normalization for certain columns
+            selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
+            x = selected_normalize.values
+            min_max_scaler = preprocessing.MinMaxScaler()
+            x_scaled = min_max_scaler.fit_transform(x)
+            self.data[selected_normalize.columns.tolist()] = x_scaled
+
+        elif method == "simple":
+            """Simple preprocessing:
+            - Forward fill
+            - Fill with -1s
+            """
+            self.data = self.data.fillna(-1)
+
 
     # Returns 1 row of data
     def __getitem__(self, index):
