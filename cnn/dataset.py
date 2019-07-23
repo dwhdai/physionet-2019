@@ -133,6 +133,9 @@ class PhysionetDatasetCNN(PhysionetDataset):
     # of one row
     def __getitem__(self, index):
 
+        updated_features = self.data.columns.tolist()
+        updated_features.remove("id")
+        updated_features.remove("SepsisLabel")
         patient_id = self.data.iloc[index]["id"]
         iculos = self.data.iloc[index]["ICULOS"]
 
@@ -145,11 +148,11 @@ class PhysionetDatasetCNN(PhysionetDataset):
 
         if (window_data["id"].nunique() == 1 and
                 len(window_data) == self.window):
-            data = window_data[FEATURES].values
+            data = window_data[updated_features].values
         else:
-            data = np.zeros((self.window, len(FEATURES)))
+            data = np.zeros((self.window, len(updated_features)))
             clipped_window = window_data[window_data["id"] == patient_id]
-            data[-len(clipped_window):, :] = clipped_window[FEATURES].values
+            data[-len(clipped_window):, :] = clipped_window[updated_features].values
 
         # data has shape (self.window, len(FEATURES))
         return (data, outcome, patient_id, iculos)

@@ -27,8 +27,6 @@ class CNN(torch.nn.Module):
         kernel_size = 3
         stride = 2
 
-
-
         # https://pytorch.org/docs/stable/nn.html#id22
         self.conv1 = torch.nn.Conv2d(in_channel, out_channel,
                                      kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
@@ -62,7 +60,7 @@ class CNN(torch.nn.Module):
 
         # Dropout
         x = self.dropout(x)
-        
+
         # Reshape data
         x = x.view(batch_size, -1)
 

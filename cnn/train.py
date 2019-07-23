@@ -9,10 +9,9 @@ import torch
 import pandas as pd
 import numpy as np
 from model import CNN
-from dataset import PhysionetDataset, PhysionetDatasetCNN, FEATURES
+from dataset import PhysionetDataset, PhysionetDatasetCNN, FEATURES, LABS_VITALS
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
-
 from evaluate_sepsis_score import compute_prediction_utility, compute_auc, compute_accuracy_f_measure
 
 class EarlyStopping(object):
@@ -62,7 +61,6 @@ class EarlyStopping(object):
             if mode == 'max':
                 self.is_better = lambda a, best: a > best + (best * min_delta / 100)
 
-
 def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="", verbose=True):
 
     if verbose:
@@ -85,7 +83,6 @@ def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="
         log = "{} -- Train loss: {} -- Valid loss: {} -- ".format(header, train_loss, valid_loss)
         log += "Train AUROC: {} -- Valid AUROC: {}".format(train_metrics["auroc"], valid_metrics["auroc"])
     print(log)
-
 
 def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, num_epochs=100,
                 cuda=False):
@@ -174,7 +171,6 @@ def evaluate_model(model, dataloader, loss_fn, threshold=0.5, cuda=False):
     })
     return results.sort_values(["id", "ICULOS"]), total_loss / dataloader.__len__()
 
-
 def compute_metrics(results):
     auroc, auprc = compute_auc(labels=results.SepsisLabel,
                                predictions=results.PredictedProbability)
@@ -248,7 +244,7 @@ if __name__ == "__main__":
 
     cuda = args.cuda and torch.cuda.is_available()
     window_size = 8
-    num_features = len(FEATURES)
+    num_features = len(FEATURES) + len(LABS_VITALS)
     batch_size = 5
     num_epochs = 10
     # num_epochs = 1000 # Test for early stopping
