@@ -2,20 +2,23 @@
 # @Author: Chloe
 # @Date:   2019-07-22 13:06:21
 # @Last Modified by:   Chloe
-# @Last Modified time: 2019-07-22 17:33:36
+# @Last Modified time: 2019-07-23 10:50:40
 
 import argparse
 import torch
+import os
 import pandas as pd
 import numpy as np
 from model import CNN
-from dataset import PhysionetDataset, PhysionetDatasetCNN, FEATURES
+from dataset import PhysionetDatasetCNN, FEATURES
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
 
-from evaluate_sepsis_score import compute_prediction_utility, compute_auc, compute_accuracy_f_measure
+from evaluate_sepsis_score import compute_prediction_utility, compute_auc, \
+    compute_accuracy_f_measure
 
-def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="", verbose=True):
+def print_results(train_metrics, valid_metrics, train_loss, valid_loss,
+                  header="", verbose=True):
 
     if verbose:
         log = "{} (train -- valid)\n".format(header)
@@ -39,8 +42,8 @@ def print_results(train_metrics, valid_metrics, train_loss, valid_loss, header="
     print(log)
 
 
-def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, num_epochs=100,
-                cuda=False):
+def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader,
+                num_epochs=100, cuda=False):
 
     model.train()
     for epoch in range(num_epochs):
@@ -70,8 +73,6 @@ def train_model(model, loss_fn, optimizer, train_dataloader, valid_dataloader, n
 
         print_results(train_metrics, valid_metrics, train_loss, valid_loss,
             header="Epoch {}".format(epoch), verbose=False)
-
-
 
     return model
 
@@ -123,7 +124,6 @@ def compute_metrics(results):
                                predictions=results.PredictedProbability)
     accuracy, f_measure = compute_accuracy_f_measure(labels=results.SepsisLabel,
                                                      predictions=results.Prediction)
-
 
     # Compute utility.
     num_files = results.id.nunique()
@@ -187,17 +187,24 @@ if __name__ == "__main__":
     argparser.add_argument("--valid_dir",
                            default="Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/")
     argparser.add_argument("--cuda", action="store_true")
+    argparser.add_argument("--batch_size", default=100, type=int)
+    argparser.add_argument("--window_size", default=24, type=int)
+    argparser.add_argument("--num_epochs", default=10, type=int)
+    argparser.add_argument("--learning_rate", default=0.0001, type=float)
+    argparser.add_argument("--output_dir", default=".")
     args = argparser.parse_args()
 
     cuda = args.cuda and torch.cuda.is_available()
-    window_size = 8
+    window_size = args.window_size
     num_features = len(FEATURES)
-    batch_size = 5
-    num_epochs = 10
+    batch_size = args.batch_size
+    num_epochs = args.num_epochs
 
+    print("Loading train data")
     train_dataset = PhysionetDatasetCNN(args.train_dir)
     train_dataset.__preprocess__()
     train_dataset.__setwindow__(window_size)
+    print("Loading valid data")
     valid_dataset = PhysionetDatasetCNN(args.valid_dir)
     valid_dataset.__preprocess__()
     valid_dataset.__setwindow__(window_size)
@@ -212,7 +219,7 @@ if __name__ == "__main__":
         model = model.cuda()
 
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     model = train_model(model, loss_fn=criterion,
                         optimizer=optimizer,
@@ -229,3 +236,7 @@ if __name__ == "__main__":
         valid_metrics = compute_metrics(valid_results)
         print_results(train_metrics, valid_metrics, train_loss, valid_loss,
                       header="Results for threshold {}".format(thr), verbose=True)
+
+    print("Saving model")
+    torch.save(model.state_dict(), os.path.join(args.output_dir,
+                                                "model.pt"))
