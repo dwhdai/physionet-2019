@@ -1,8 +1,10 @@
 
 from torch.utils.data import Dataset
+from sklearn import preprocessing
 import pandas as pd
 import numpy as np
 import os
+
 
 FEATURES = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
             'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST',
@@ -12,6 +14,14 @@ FEATURES = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
             'Hct', 'Hgb', 'PTT', 'WBC', 'Fibrinogen', 'Platelets',
             'Age', 'Gender', 'Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 LABEL = ['SepsisLabel']
+
+# Labs and Vitals that needed indicators
+LABS_VITALS = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
+       'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN',
+       'Alkalinephos', 'Calcium', 'Chloride', 'Creatinine', 'Bilirubin_direct',
+       'Glucose', 'Lactate', 'Magnesium', 'Phosphate', 'Potassium',
+       'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC',
+       'Fibrinogen', 'Platelets']
 
 
 class PhysionetDataset(Dataset):
@@ -58,13 +68,32 @@ class PhysionetDataset(Dataset):
 
     # Simple preprocessing
     def __preprocess__(self):
-        # Forward-fill
-        preprocessed_data = self.data.groupby("id").ffill()
-        # Fill NAs with -1
-        # TODO: Fill with average? Create indicator variables? Create
-        # last_measured variables?
-        preprocessed_data = preprocessed_data.fillna(-1)
-        self.data = preprocessed_data
+        
+        
+        # TODO: Include time since last measure
+        
+
+        # Forward fill
+        self.data = self.data.groupby("id").ffill()
+
+        # Add indicator variables & fill with means for labs/vitals
+        for feature in LABS_VITALS:
+            # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
+            self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
+            # Fill NaNs in labs/vitals into averages for each patient
+            self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
+            self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
+        
+        # Fill the rest NaNs with -1
+        self.data = self.data.fillna(-1)
+
+        # Normalization for certain columns
+        selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
+        x = selected_normalize.values
+        min_max_scaler = preprocessing.MinMaxScaler()
+        x_scaled = min_max_scaler.fit_transform(x)
+        self.data[selected_normalize.columns.tolist()] = x_scaled
+        
 
     # Returns 1 row of data
     def __getitem__(self, index):
@@ -104,6 +133,9 @@ class PhysionetDatasetCNN(PhysionetDataset):
     # of one row
     def __getitem__(self, index):
 
+        updated_features = self.data.columns.tolist()
+        updated_features.remove("id")
+        updated_features.remove("SepsisLabel")
         patient_id = self.data.iloc[index]["id"]
         iculos = self.data.iloc[index]["ICULOS"]
 
@@ -116,11 +148,13 @@ class PhysionetDatasetCNN(PhysionetDataset):
 
         if (window_data["id"].nunique() == 1 and
                 len(window_data) == self.window):
-            data = window_data[FEATURES].values
+            data = window_data[updated_features].values
         else:
-            data = np.zeros((self.window, len(FEATURES)))
+            data = np.zeros((self.window, len(updated_features)))
             clipped_window = window_data[window_data["id"] == patient_id]
-            data[-len(clipped_window):, :] = clipped_window[FEATURES].values
+            data[-len(clipped_window):, :] = clipped_window[updated_features].values
 
         # data has shape (self.window, len(FEATURES))
         return (data, outcome, patient_id, iculos)
+
+

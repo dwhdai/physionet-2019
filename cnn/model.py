@@ -27,8 +27,6 @@ class CNN(torch.nn.Module):
         kernel_size = 3
         stride = 2
 
-
-
         # https://pytorch.org/docs/stable/nn.html#id22
         self.conv1 = torch.nn.Conv2d(in_channel, out_channel,
                                      kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
@@ -40,7 +38,9 @@ class CNN(torch.nn.Module):
         pool_output_height = int(((conv1_output_height + 2 *padding - dilation * (kernel_size - 1) - 1) / stride) + 1)
         pool_output_width = int(((conv1_output_width + 2 *padding - dilation * (kernel_size - 1) - 1) / stride) + 1)
 
-
+        # Dropout
+        self.dropout = torch.nn.Dropout(0.5)
+        
         # hidden_size = 64 --> can change this later
         self.fc1 = torch.nn.Linear(pool_output_height * pool_output_width, 64)
 
@@ -57,6 +57,9 @@ class CNN(torch.nn.Module):
 
         # Max pool
         x = self.pool(x)
+
+        # Dropout
+        x = self.dropout(x)
 
         # Reshape data
         x = x.view(batch_size, -1)
