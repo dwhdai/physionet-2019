@@ -88,11 +88,11 @@ class PhysionetDataset(Dataset):
             self.data = self.data.fillna(-1)
 
             # Normalization for certain columns
-            selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
-            x = selected_normalize.values
-            min_max_scaler = preprocessing.MinMaxScaler()
-            x_scaled = min_max_scaler.fit_transform(x)
-            self.data[selected_normalize.columns.tolist()] = x_scaled
+            #selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
+            #x = selected_normalize.values
+            #min_max_scaler = preprocessing.MinMaxScaler()
+            #x_scaled = min_max_scaler.fit_transform(x)
+            #self.data[selected_normalize.columns.tolist()] = x_scaled
 
         elif method == "simple":
             """Simple preprocessing:
