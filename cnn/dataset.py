@@ -52,6 +52,7 @@ class PhysionetDataset(Dataset):
             patient_df = pd.read_csv(os.path.join(input_directory, filename),
                                      sep="|")
             patient_df["id"] = patient_id  # Add patient ID to data
+            patient_df["filename"] = filename
 
             all_patients_np_list.append(patient_df.values)
 
@@ -67,7 +68,7 @@ class PhysionetDataset(Dataset):
     def __preprocess__(self, method="measured"):
 
         self.preprocessing_method = method
-        
+
         # Forward fill
         self.data = self.data.groupby("id").ffill()
 
@@ -85,8 +86,8 @@ class PhysionetDataset(Dataset):
                 # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
                 self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
                 # Fill NaNs in labs/vitals into averages for each patient
-                self.data[feature].fillna(self.data.groupby("id")[feature].transform("mean"), inplace=True)
-            
+                self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
+
             # Fill the rest NaNs with -1
             self.data = self.data.fillna(-1)
 
@@ -103,6 +104,12 @@ class PhysionetDataset(Dataset):
             - Fill with -1s
             """
             self.data = self.data.fillna(-1)
+
+        updated_features = self.data.columns.tolist()
+        updated_features.remove("id")
+        updated_features.remove("SepsisLabel")
+        updated_features.remove("filename")
+        self.features = updated_features
 
 
     # Returns 1 row of data
@@ -141,10 +148,8 @@ class PhysionetDatasetCNN(PhysionetDataset):
     # of one row
     def __getitem__(self, index):
 
-        updated_features = self.data.columns.tolist()
-        updated_features.remove("id")
-        updated_features.remove("SepsisLabel")
         patient_id = self.data.iloc[index]["id"].astype(int)
+        filename = self.data.iloc[index]["filename"]
         iculos = self.data.iloc[index]["ICULOS"]
 
         if index < self.window:
@@ -156,11 +161,11 @@ class PhysionetDatasetCNN(PhysionetDataset):
 
         if (window_data["id"].nunique() == 1 and
                 len(window_data) == self.window):
-            data = window_data[updated_features].values
+            data = window_data[self.features].values
         else:
-            data = np.zeros((self.window, len(updated_features)))
+            data = np.zeros((self.window, len(self.features)))
             clipped_window = window_data[window_data["id"] == patient_id]
-            data[-len(clipped_window):, :] = clipped_window[updated_features].values
+            data[-len(clipped_window):, :] = clipped_window[self.features].values
 
         # data has shape (self.window, len(FEATURES))
-        return (data, outcome, patient_id, iculos)
+        return (data, outcome, patient_id, iculos, filename)
