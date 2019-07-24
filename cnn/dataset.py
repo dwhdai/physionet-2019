@@ -64,11 +64,7 @@ class PhysionetDataset(Dataset):
     def __preprocess__(self, method="measured"):
 
         self.preprocessing_method = method
-
-
-        # TODO: Include time since last measure
-
-
+        
         # Forward fill
         self.data = self.data.groupby("id").ffill()
 

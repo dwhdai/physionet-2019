@@ -2,7 +2,7 @@
 # @Author: Chloe
 # @Date:   2019-07-22 13:06:21
 # @Last Modified by:   Chloe
-# @Last Modified time: 2019-07-23 14:02:05
+# @Last Modified time: 2019-07-23 14:23:05
 
 import argparse
 import torch
@@ -244,6 +244,10 @@ if __name__ == "__main__":
     argparser.add_argument("--num_epochs", default=10, type=int)
     argparser.add_argument("--learning_rate", default=0.0001, type=float)
     argparser.add_argument("--output_dir", default=".")
+    argparser.add_argument("--preprocessing_method", default="measured",
+                           help="""Possible values:
+                           - measured (forward-fill, add indicator variables, normalize, impute with -1),
+                           - simple (only do forward-fill and impute with -1) """)
     args = argparser.parse_args()
 
     cuda = args.cuda and torch.cuda.is_available()
@@ -254,11 +258,11 @@ if __name__ == "__main__":
 
     print("Loading train data")
     train_dataset = PhysionetDatasetCNN(args.train_dir)
-    train_dataset.__preprocess__()
+    train_dataset.__preprocess__(method=args.preprocessing_method)
     train_dataset.__setwindow__(window_size)
     print("Loading valid data")
     valid_dataset = PhysionetDatasetCNN(args.valid_dir)
-    valid_dataset.__preprocess__()
+    valid_dataset.__preprocess__(method=args.preprocessing_method)
     valid_dataset.__setwindow__(window_size)
 
     train_dataloader = DataLoader(train_dataset,
