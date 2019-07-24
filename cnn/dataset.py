@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import os
 
-
 FEATURES = ['HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2',
             'BaseExcess', 'HCO3', 'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST',
             'BUN', 'Alkalinephos', 'Calcium', 'Chloride', 'Creatinine',
@@ -52,16 +51,20 @@ class PhysionetDataset(Dataset):
         filenames = os.listdir(input_directory)
 
         # Read all filenames
-        all_patients_dfs = []
+        all_patients_np_list = []
         for filename in filenames:
-            patient_id = filename.split(".")[0]
+            patient_id = int(filename.split(".")[0][1:])
             patient_df = pd.read_csv(os.path.join(input_directory, filename),
                                      sep="|")
             patient_df["id"] = patient_id  # Add patient ID to data
 
-            all_patients_dfs += [patient_df]
+            all_patients_np_list.append(patient_df.values)
 
-        self.data = pd.concat(all_patients_dfs)
+        combined_np_array = np.vstack(all_patients_np_list)
+        self.data = pd.DataFrame(combined_np_array)
+        self.data.columns = patient_df.columns
+        self.indices_outcome = self.data[self.data[LABEL[0]] == 1].index.values.astype(int)
+        self.indices_no_outcome = self.data[self.data[LABEL[0]] == 0].index.values.astype(int)
 
     def __len__(self):
         return len(self.data)
@@ -153,7 +156,7 @@ class PhysionetDatasetCNN(PhysionetDataset):
         updated_features = self.data.columns.tolist()
         updated_features.remove("id")
         updated_features.remove("SepsisLabel")
-        patient_id = self.data.iloc[index]["id"]
+        patient_id = self.data.iloc[index]["id"].astype(int)
         iculos = self.data.iloc[index]["ICULOS"]
 
         if index < self.window:
@@ -161,7 +164,7 @@ class PhysionetDatasetCNN(PhysionetDataset):
         else:
             window_data = self.data.iloc[index + 1 - self.window: index + 1]
 
-        outcome = window_data[LABEL].values[-1]
+        outcome = window_data[LABEL].values[-1].astype(int)
 
         if (window_data["id"].nunique() == 1 and
                 len(window_data) == self.window):
