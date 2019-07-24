@@ -67,11 +67,7 @@ class PhysionetDataset(Dataset):
         return len(self.data)
 
     # Simple preprocessing
-    def __preprocess__(self):
-        
-        
-        # TODO: Include time since last measure
-        
+    def __preprocess__(self):        
 
         # Forward fill
         self.data = self.data.groupby("id").ffill()
@@ -81,8 +77,7 @@ class PhysionetDataset(Dataset):
             # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
             self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
             # Fill NaNs in labs/vitals into averages for each patient
-            self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
-            self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
+            self.data[feature].fillna(self.data.groupby("id")[feature].transform("mean"), inplace = True)
         
         # Fill the rest NaNs with -1
         self.data = self.data.fillna(-1)
