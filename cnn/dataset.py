@@ -1,4 +1,3 @@
-
 from torch.utils.data import Dataset
 from sklearn import preprocessing
 import pandas as pd
@@ -30,18 +29,14 @@ class PhysionetDataset(Dataset):
     datadir = "Z:/LKS-CHART/Projects/physionet_sepsis_project/data/small_data/"
     dataset = PhysionetDataset(datadir)
     dataset.__preprocess__()
-
     # Use with PyTorch
     dataloader = DataLoader(dataset, batch_size=5)
     for i, batch in enumerate(dataloader):
         row_data = batch[0]
         label = batch[1]
         # Run model on batch!!
-
     # Use entire dataframe
     data = dataset.data
-
-
     Attributes:
         data (TYPE): pandas.DataFrame
     """
@@ -72,11 +67,7 @@ class PhysionetDataset(Dataset):
     def __preprocess__(self, method="measured"):
 
         self.preprocessing_method = method
-
-
-        # TODO: Include time since last measure
-
-
+        
         # Forward fill
         self.data = self.data.groupby("id").ffill()
 
@@ -94,18 +85,17 @@ class PhysionetDataset(Dataset):
                 # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
                 self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
                 # Fill NaNs in labs/vitals into averages for each patient
-                self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
-                self.data[feature] = self.data[feature].fillna(self.data[feature].mean())
-
+                self.data[feature].fillna(self.data.groupby("id")[feature].transform("mean"), inplace=True)
+            
             # Fill the rest NaNs with -1
             self.data = self.data.fillna(-1)
 
             # Normalization for certain columns
-            selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
-            x = selected_normalize.values
-            min_max_scaler = preprocessing.MinMaxScaler()
-            x_scaled = min_max_scaler.fit_transform(x)
-            self.data[selected_normalize.columns.tolist()] = x_scaled
+            #selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
+            #x = selected_normalize.values
+            #min_max_scaler = preprocessing.MinMaxScaler()
+            #x_scaled = min_max_scaler.fit_transform(x)
+            #self.data[selected_normalize.columns.tolist()] = x_scaled
 
         elif method == "simple":
             """Simple preprocessing:
@@ -134,14 +124,12 @@ class PhysionetDatasetCNN(PhysionetDataset):
     dataset = PhysionetDatasetCNN(datadir)
     dataset.__preprocess__()
     dataset.__setwindow__(window = 8) # Generates 8 hour windows!
-
     # Use with PyTorch
     dataloader = DataLoader(dataset, batch_size=10, shuffle=True)
     for i, batch in enumerate(dataloader):
         cnn_data = batch[0]
         label = batch[1]
         # blah blah blah cnn
-
     Attributes:
         window (TYPE): Description
     """
@@ -176,5 +164,3 @@ class PhysionetDatasetCNN(PhysionetDataset):
 
         # data has shape (self.window, len(FEATURES))
         return (data, outcome, patient_id, iculos)
-
-
