@@ -41,3 +41,5 @@ rsconnect/
 
 .Rproj.user
 physionet_data
+
+/.idea/
