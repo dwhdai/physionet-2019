@@ -134,10 +134,11 @@ def save_results(model_file, npz_file, output_dir):
     X_test = X_test.reshape(X_test.shape[0], window_size, feature_size, 1)
 
     # Simple evaluation?
+    print("Start prediction resuls ...")
     y_pred = model.predict(X_test)
     y_pred = y_pred.reshape(y_pred.shape[0],)
     y_pred_class = []
-    threshold = 0.5
+    threshold = 0.25
     for i in y_pred:
         if i >= threshold:
             y_pred_class.append(1)
