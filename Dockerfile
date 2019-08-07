@@ -1,14 +1,28 @@
-FROM python:3.7.3-slim
+FROM continuumio/anaconda3
+
+
 
 ## The MAINTAINER instruction sets the Author field of the generated images
-MAINTAINER author@sample.com
+
+MAINTAINER aut...@sample.com
+
 ## DO NOT EDIT THESE 3 lines
+
 RUN mkdir /physionet2019
+
 COPY ./ /physionet2019
+
 WORKDIR /physionet2019
+
+
 
 ## Install your dependencies here using apt-get etc.
 
-## Do not edit if you have a requirements.txt
-RUN pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
 
+ENV PATH /opt/conda/bin:$PATH
+RUN conda config --set ssl_verify no
+RUN conda create --name physionet
+RUN activate physionet
+RUN conda install pandas numpy scikit-learn scipy
+RUN conda install pytorch-cpu torchvision-cpu -c pytorch
+RUN conda install -c conda-forge keras
