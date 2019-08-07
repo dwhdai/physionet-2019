@@ -40,4 +40,4 @@ vignettes/*.pdf
 rsconnect/
 
 __pycache__/
-
+test_data/
