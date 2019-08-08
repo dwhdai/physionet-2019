@@ -13,7 +13,6 @@ def load_challenge_data(file):
     if column_names[-1] == 'SepsisLabel':
         column_names = column_names[:-1]
         data = data[:, :-1]
-
     return data
 
 def save_challenge_predictions(file, scores, labels):
