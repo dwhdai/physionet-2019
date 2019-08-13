@@ -70,7 +70,10 @@ class PhysionetDataset(Dataset):
         self.preprocessing_method = method
 
         # Forward fill
+        ids = self.data["id"]
         self.data = self.data.groupby("id").ffill()
+        self.data["id"] = ids
+
 
         if method == "measured":
             """Measured preprocessing
@@ -86,17 +89,10 @@ class PhysionetDataset(Dataset):
                 # Add indicator variable for each labs/vitals "xxx" with name "xxx_measured" and fill with 1 (measured) or 0 (not measured)
                 self.data[feature + "_measured"] = [int(not(val)) for val in self.data[feature].isna().tolist()]
                 # Fill NaNs in labs/vitals into averages for each patient
-                self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
+                # self.data[feature] = self.data.groupby("id")[feature].apply(lambda x: x.fillna(x.mean()))
 
             # Fill the rest NaNs with -1
             self.data = self.data.fillna(-1)
-
-            # Normalization for certain columns
-            #selected_normalize = self.data.drop(["id", "Unit1", "Unit2", 'SepsisLabel'], axis=1)
-            #x = selected_normalize.values
-            #min_max_scaler = preprocessing.MinMaxScaler()
-            #x_scaled = min_max_scaler.fit_transform(x)
-            #self.data[selected_normalize.columns.tolist()] = x_scaled
 
         elif method == "simple":
             """Simple preprocessing:
@@ -106,13 +102,7 @@ class PhysionetDataset(Dataset):
             self.data = self.data.fillna(-1)
 
         updated_features = self.data.columns.tolist()
-        if "id" in updated_features:
-            updated_features.remove("id")
-        if "SepsisLabel" in updated_features:
-            updated_features.remove("SepsisLabel")
-        if "filename" in updated_features:
-            updated_features.remove("filename")
-        self.features = updated_features
+        self.features = [f for f in self.data.columns.tolist() if f not in ["id", "SepsisLabel", "filename"]]
 
 
     # Returns 1 row of data
@@ -150,7 +140,6 @@ class PhysionetDatasetCNN(PhysionetDataset):
     # Override the __getitem__ function to return data for CNN instead
     # of one row
     def __getitem__(self, index):
-
         patient_id = self.data.iloc[index]["id"].astype(int)
         filename = self.data.iloc[index]["filename"]
         iculos = self.data.iloc[index]["ICULOS"]
