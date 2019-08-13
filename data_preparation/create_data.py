@@ -2,7 +2,7 @@
 # @Author: Chloe
 # @Date:   2019-07-24 16:57:51
 # @Last Modified by:   Chloe
-# @Last Modified time: 2019-07-24 17:43:47
+# @Last Modified time: 2019-08-07 16:25:09
 
 import argparse
 import numpy as np
@@ -11,6 +11,7 @@ import os
 import time
 from dataset import PhysionetDatasetCNN, FEATURES, LABEL, LABS_VITALS
 
+ratio = 0.1
 if __name__ == "__main__":
     start_time = time.time()
     argparser = argparse.ArgumentParser()
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     print("Preprocessing train data")
     train_dataset.__preprocess__(method=args.preprocessing_method)
     train_dataset.__setwindow__(window_size)
+    print(train_dataset.data.columns)
     print("Time elapsed since start: {}".format(time.time() - start_time))
     print("Loading valid data")
     valid_dataset = PhysionetDatasetCNN(args.valid_dir)
@@ -46,18 +48,13 @@ if __name__ == "__main__":
     print("Time elapsed since start: {}".format(time.time() - start_time))
 
     print("Save preprocessed datasets")
+    print("Generating train data with ratio {}".format(ratio))
 
-    ratio_values = [None, 0.1, 0.2, 0.3, 0.4, 0.5]
-    for ratio in ratio_values:
-        print("Generating train data with ratio {}".format(ratio))
+    for r in range(5):
         if ratio:
             indices_no_outcome_keep = np.random.permutation(train_dataset.indices_no_outcome)[:int(1 / ratio) * len(train_dataset.indices_outcome)]
             indices_train = np.random.permutation(np.concatenate((train_dataset.indices_outcome, indices_no_outcome_keep)))
             train_n = len(indices_train)
-        else:
-            train_n = train_dataset.__len__()
-            indices_train = np.concatenate((train_dataset.indices_outcome,
-                                            train_dataset.indices_no_outcome))
         train_features = np.zeros((train_n, window_size, num_features))
         train_outcomes = np.zeros((train_n, 1))
         train_ids = np.zeros((train_n, 1))
@@ -74,10 +71,7 @@ if __name__ == "__main__":
 
         if ratio:
             train_filename = os.path.join(args.output_dir,
-                                      "train_preprocessed_{}_window_{}_ratio_{}.npz".format(args.preprocessing_method, window_size, str(ratio).replace(".", "_")))
-        else:
-            train_filename = os.path.join(args.output_dir,
-                                          "train_preprocessed_{}_window_{}.npz".format(args.preprocessing_method, window_size))
+                                      "train_preprocessed_{}_window_{}_ratio_{}_{}.npz".format(args.preprocessing_method, window_size, str(ratio).replace(".", "_"), r))
         np.savez(train_filename,
                  train_features=train_features,
                  train_outcomes=train_outcomes,
