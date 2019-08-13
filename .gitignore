@@ -39,7 +39,10 @@ vignettes/*.pdf
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
 
+
 *.idea/
 david/__pycache__/
 david/xgboost/.ipynb_checkpoints/
 *.csv
+__pycache__/
+test_data/
