@@ -18,13 +18,13 @@ DEMOGRAPHIC_COLUMNS = ['Age', 'Gender']
 HOSPITAL_COLUMNS = ['Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 
 def load_sepsis_model():
-    model_filename = "physionet_cnn_ratio_0_1.h5"
+    model_filename = "iter_0_ratio_1_2_rand.h5"
     return load_model(model_filename)
 
 def get_sepsis_score(data, model):
     window_size = 24 # TODO: Change to args.window_size?
 
-    threshold = 0.25 # determined on 10-fold cv but this needs to be revisited tbh
+    threshold = 0.5
     # avg_values_filename="avg_values.joblib"  # avg values from train data
     # min_max_scaler_filename="min_max_scaler.joblib"  # min/max values from train data
 
@@ -40,7 +40,6 @@ def get_sepsis_score(data, model):
     # Pre-process data
 
     features = data_obj.__getitem__(data_obj.__len__() - 1)[0]
-
 
     X_test = features.reshape(1, window_size, len(data_obj.features), 1)
 
