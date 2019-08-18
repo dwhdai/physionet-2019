@@ -1,0 +1,80 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(survival)
+library(survminer)
+
+```
+
+```{r}
+data(ovarian)
+
+ovarian <- ovarian %>% 
+  mutate(rx = factor(rx, 
+                     levels = c("1", "2"),
+                     labels = c("A", "B")),
+         resid.ds = factor(resid.ds, 
+                     levels = c("1", "2"),
+                     labels = c("no", "yes")),
+         ecog.ps = factor(ecog.ps, 
+                     levels = c("1", "2"),
+                     labels = c("good", "bad"))
+         ) %>% 
+  as_tibble()
+
+# Create survival object
+surv_obj <- Surv(time = ovarian$futime,
+           event = ovarian$fustat)
+
+# KM curves
+km_fit <- survfit(surv_obj ~ rx, data = ovarian)
+ggsurvplot(km_fit, data = ovarian)
+
+# Cox PH model
+cox_fit <- coxph(surv_obj ~ rx + resid.ds + age + ecog.ps,
+                 data = ovarian)
+
+
+# Generate prediction for an individual
+input_features <- list(rx = "A",
+                             resid.ds = "yes",
+                             age = 50,
+                             ecog.ps = "good")
+predict(cox_fit,
+        input_features,
+        type = "expected")
+
+# Function to calculate the probability of event given input features and time
+risk <-  function(model, newdata, time) {
+  as.numeric(1-summary(survfit(model, newdata = newdata, se.fit = F, conf.int = F), times = time)$surv)
+}
+
+summary(survfit(cox_fit,
+                newdata = list(rx = "A",
+                               resid.ds = "yes",
+                               age = 50,
+                               ecog.ps = "good")),
+        censored = T, times = 1000)
+
+risk(cox_fit, input_features, 1000)
+
+#https://stats.stackexchange.com/questions/36015/prediction-in-cox-regression
+
+```
+
+# Time-varying covariates
+```{r}
+cut_points <- unique(ovarian$futime[ovarian$fustat==1])
+```
+
