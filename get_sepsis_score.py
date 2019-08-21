@@ -18,7 +18,7 @@ DEMOGRAPHIC_COLUMNS = ['Age', 'Gender']
 HOSPITAL_COLUMNS = ['Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 
 def load_sepsis_model():
-    model_filename = "iter_1_ratio_1_2_rand_simple.h5"
+    model_filename = "iter_2_ratio_1_20_cluster.h5"
     return load_model(model_filename)
 
 def get_sepsis_score(data, model):
