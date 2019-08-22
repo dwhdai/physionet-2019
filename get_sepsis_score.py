@@ -18,13 +18,13 @@ DEMOGRAPHIC_COLUMNS = ['Age', 'Gender']
 HOSPITAL_COLUMNS = ['Unit1', 'Unit2', 'HospAdmTime', 'ICULOS']
 
 def load_sepsis_model():
-    model_filename = "iter_1_ratio_1_2_rand_simple.h5"
+    model_filename = "iter_1_ratio_1_2_rand_simple_submitted.h5"
     return load_model(model_filename)
 
 def get_sepsis_score(data, model):
     window_size = 24 # TODO: Change to args.window_size?
 
-    threshold = 0.405
+    threshold = 0.525
     # avg_values_filename="avg_values.joblib"  # avg values from train data
     # min_max_scaler_filename="min_max_scaler.joblib"  # min/max values from train data
 
