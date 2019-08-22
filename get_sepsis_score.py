@@ -24,7 +24,7 @@ def load_sepsis_model():
 def get_sepsis_score(data, model):
     window_size = 24 # TODO: Change to args.window_size?
 
-    threshold = 0.5
+    threshold = 0.405
     # avg_values_filename="avg_values.joblib"  # avg values from train data
     # min_max_scaler_filename="min_max_scaler.joblib"  # min/max values from train data
 
